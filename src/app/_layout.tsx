@@ -1,20 +1,38 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 
+import { AuthProvider, useAuth } from '@/auth/auth-provider';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
-import { useTheme } from '@/hooks/use-theme'; // NEW
-import { ThemeModeProvider } from '@/theme/theme-mode'; // NEW
+import { useTheme } from '@/hooks/use-theme';
+import { ThemeModeProvider } from '@/theme/theme-mode';
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
+// Logged-in users see the app; logged-out users see the login screens.
+function RootNavigator() {
+  const { session, isLoading } = useAuth();
+
+  // The animated Stedvora screen covers the app while the saved session is checked.
+  if (isLoading) return null;
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={!!session}>
+        <Stack.Screen name="(app)" />
+      </Stack.Protected>
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="(auth)" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const colors = useTheme(); // NEW
+  const colors = useTheme();
   const base = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
 
-  // NEW: navigation colours now come from the Stedvora palette
   const navTheme = {
     ...base,
     colors: {
@@ -29,10 +47,12 @@ export default function TabLayout() {
 
   return (
     <ThemeModeProvider>
-      <ThemeProvider value={navTheme}>
-        <AnimatedSplashOverlay />
-        <AppTabs />
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider value={navTheme}>
+          <AnimatedSplashOverlay />
+          <RootNavigator />
+        </ThemeProvider>
+      </AuthProvider>
     </ThemeModeProvider>
   );
 }
