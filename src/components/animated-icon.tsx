@@ -1,148 +1,100 @@
 import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
-import { useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import Animated, { Easing, Keyframe } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
 
-const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
-const DURATION = 600;
+const BRAND_NAVY = '#0B1220';
+const BRAND_IVORY = '#F6F1E7';
+const HOLD_MS = 1400; // how long the brand screen stays visible
+const HOLD_MS_REDUCED = 700; // shorter when the phone has "Reduce Motion" on
+const FADE_MS = 450;
+const MARK_SIZE = 120;
 
 export function AnimatedSplashOverlay() {
-  const [animate, setAnimate] = useState(false);
   const [visible, setVisible] = useState(true);
+  const reducedMotion = useReducedMotion();
+  const started = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
+  // Once our navy screen is on screen, hide the native splash, hold briefly, then fade out.
+  const handleLayout = useCallback(() => {
+    if (started.current) return;
+    started.current = true;
+    SplashScreen.hideAsync()
+      .catch(() => {})
+      .finally(() => {
+        timer.current = setTimeout(
+          () => setVisible(false),
+          reducedMotion ? HOLD_MS_REDUCED : HOLD_MS
+        );
+      });
+  }, [reducedMotion]);
 
   if (!visible) return null;
 
-  const splashKeyframe = new Keyframe({
-    0: {
-      transform: [{ scale: 1 }],
-      opacity: 1,
-    },
-    20: {
-      opacity: 1,
-    },
-    70: {
-      opacity: 0,
-      easing: Easing.elastic(0.7),
-    },
-    100: {
-      opacity: 0,
-      transform: [{ scale: 1 }],
-      easing: Easing.elastic(0.7),
-    },
-  });
-
-  const image = <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />;
-
-  return animate ? (
+  return (
     <Animated.View
-      entering={splashKeyframe.duration(DURATION).withCallback((finished) => {
-        'worklet';
-        if (finished) {
-          scheduleOnRN(setVisible, false);
-        }
-      })}
-      style={styles.splashOverlay}>
-      {image}
+      exiting={FadeOut.duration(FADE_MS)}
+      onLayout={handleLayout}
+      accessible
+      accessibilityLabel="Stedvora is loading"
+      style={styles.overlay}>
+      <Animated.View entering={FadeIn.duration(600)}>
+        <Image
+          style={styles.mark}
+          contentFit="contain"
+          source={require('@/assets/images/stedvora-mark.png')}
+        />
+      </Animated.View>
+      <Animated.Text entering={FadeIn.delay(300).duration(600)} style={styles.wordmark}>
+        STEDVORA
+      </Animated.Text>
     </Animated.View>
-  ) : (
-    <View
-      onLayout={() => {
-        SplashScreen.hideAsync().finally(() => {
-          setAnimate(true);
-        });
-      }}
-      style={styles.splashOverlay}>
-      {image}
-    </View>
   );
 }
 
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: INITIAL_SCALE_FACTOR }],
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const logoKeyframe = new Keyframe({
-  0: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-  },
-  40: {
-    transform: [{ scale: 1.3 }],
-    opacity: 0,
-    easing: Easing.elastic(0.7),
-  },
-  100: {
-    opacity: 1,
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(0.7),
-  },
-});
-
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '0deg' }],
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
-  },
-});
-
+// Kept so any other file that imports it still compiles.
 export function AnimatedIcon() {
   return (
     <View style={styles.iconContainer}>
-      <Animated.View entering={glowKeyframe.duration(60 * 1000 * 4)} style={styles.glow}>
-        <Image style={styles.glow} source={require('@/assets/images/logo-glow.png')} />
-      </Animated.View>
-
-      <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
-      </Animated.View>
+      <Image
+        style={styles.mark}
+        contentFit="contain"
+        source={require('@/assets/images/stedvora-mark.png')}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  imageContainer: {
-    justifyContent: 'center',
+  overlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: BRAND_NAVY,
     alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
   },
-  glow: {
-    width: 201,
-    height: 201,
+  mark: { width: MARK_SIZE, height: MARK_SIZE },
+  wordmark: {
     position: 'absolute',
+    top: '50%',
+    marginTop: MARK_SIZE / 2 + 28,
+    color: BRAND_IVORY,
+    fontSize: 20,
+    fontWeight: '600',
+    letterSpacing: 8,
   },
   iconContainer: {
     justifyContent: 'center',
     alignItems: 'center',
     width: 128,
     height: 128,
-    zIndex: 100,
-  },
-  image: {
-    width: 76,
-    height: 71,
-  },
-  background: {
-    borderRadius: 40,
-    experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
-    width: 128,
-    height: 128,
-    position: 'absolute',
-  },
-  splashOverlay: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
   },
 });

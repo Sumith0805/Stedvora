@@ -13,9 +13,9 @@ type ThemeModeContextValue = {
 
 const ThemeModeContext = createContext<ThemeModeContextValue | null>(null);
 
-// 'system' means: stop overriding, follow the phone's setting.
+// 'system' means: stop overriding, follow the phone's setting ('unspecified').
 function applyMode(mode: ThemeMode) {
-  Appearance.setColorScheme(mode === 'system' ? null : mode);
+  Appearance.setColorScheme(mode === 'system' ? 'unspecified' : mode);
 }
 
 export function ThemeModeProvider({ children }: { children: React.ReactNode }) {
