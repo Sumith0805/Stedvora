@@ -1,9 +1,9 @@
-import { Image } from 'expo-image';
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ThemeModeSwitcher } from '@/components/theme-mode-switcher';
+import { StedvoraMark } from '@/components/stedvora-mark';
+import { ThemeModeToggle } from '@/components/theme-mode-toggle';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -26,16 +26,15 @@ export function AuthScreen({ title, subtitle, children, footer }: Props) {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + Spacing.five, paddingBottom: insets.bottom + Spacing.four },
+          { paddingTop: insets.top + Spacing.six, paddingBottom: insets.bottom + Spacing.four },
         ]}>
         <View style={styles.column}>
-          <View style={styles.brand}>
-            <Image
-              source={require('@/assets/images/stedvora-mark.png')}
-              contentFit="contain"
-              style={styles.mark}
-            />
-            <Text style={[styles.brandName, { color: colors.text }]}>STEDVORA</Text>
+          <View style={styles.topRow}>
+            <View style={styles.brand}>
+              <StedvoraMark size={36} />
+              <Text style={[styles.brandName, { color: colors.text }]}>STEDVORA</Text>
+            </View>
+            <ThemeModeToggle />
           </View>
 
           <View style={styles.heading}>
@@ -48,11 +47,6 @@ export function AuthScreen({ title, subtitle, children, footer }: Props) {
           <View style={styles.form}>{children}</View>
 
           {footer}
-
-          <View style={styles.switcher}>
-            <Text style={[styles.switcherLabel, { color: colors.textSecondary }]}>Appearance</Text>
-            <ThemeModeSwitcher />
-          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -63,13 +57,11 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { flexGrow: 1, paddingHorizontal: Spacing.four },
   column: { width: '100%', maxWidth: 480, alignSelf: 'center', gap: Spacing.four },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  mark: { width: 36, height: 36 },
   brandName: { fontSize: 15, fontWeight: '700', letterSpacing: 4 },
   heading: { gap: Spacing.two },
   title: { fontSize: 32, lineHeight: 38, fontWeight: '700' },
   subtitle: { fontSize: 16, lineHeight: 24 },
   form: { gap: Spacing.three },
-  switcher: { gap: Spacing.two, marginTop: Spacing.three },
-  switcherLabel: { fontSize: 13, fontWeight: '600' },
 });
