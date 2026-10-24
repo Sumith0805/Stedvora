@@ -1,61 +1,84 @@
-import { Image } from 'expo-image';
 import * as SplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, useReducedMotion } from 'react-native-reanimated';
+import { AppState, StyleSheet, View } from 'react-native';
+import Animated, { FadeOut, useReducedMotion } from 'react-native-reanimated';
 
-const BRAND_NAVY = '#0B1220';
-const BRAND_IVORY = '#F6F1E7';
-const HOLD_MS = 1400; // how long the brand screen stays visible
+import { BrandIntro } from '@/components/brand-intro';
+import { StedvoraMark } from '@/components/stedvora-mark';
+
+// The intro always uses the dark brand look, whatever theme the app is in.
+const INTRO_BACKGROUND = '#000000';
+const INTRO_WHITE = '#FFFFFF';
+const BRAND_RED = '#E50914';
+
+const HOLD_MS = 2300; // how long the intro plays before fading out
 const HOLD_MS_REDUCED = 700; // shorter when the phone has "Reduce Motion" on
 const FADE_MS = 450;
-const MARK_SIZE = 120;
+// If the app was in the background for at least this long, the intro plays again on return.
+const REPLAY_AFTER_MS = 30_000;
 
 export function AnimatedSplashOverlay() {
   const [visible, setVisible] = useState(true);
+  const [runKey, setRunKey] = useState(0);
   const reducedMotion = useReducedMotion();
-  const started = useRef(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const nativeSplashHidden = useRef(false);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const leftAt = useRef<number | null>(null);
 
+  const scheduleHide = useCallback(() => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(
+      () => setVisible(false),
+      reducedMotion ? HOLD_MS_REDUCED : HOLD_MS
+    );
+  }, [reducedMotion]);
+
+  // Replay the intro when the app is reopened after being away for a while.
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'background') {
+        leftAt.current = Date.now();
+      } else if (state === 'active') {
+        const away = leftAt.current ? Date.now() - leftAt.current : 0;
+        leftAt.current = null;
+        if (away >= REPLAY_AFTER_MS) {
+          setRunKey((key) => key + 1);
+          setVisible(true);
+          scheduleHide();
+        }
+      }
+    });
     return () => {
-      if (timer.current) clearTimeout(timer.current);
+      subscription.remove();
+      if (hideTimer.current) clearTimeout(hideTimer.current);
     };
-  }, []);
+  }, [scheduleHide]);
 
-  // Once our navy screen is on screen, hide the native splash, hold briefly, then fade out.
+  // First launch: once our black screen is showing, hide the native splash and start the clock.
   const handleLayout = useCallback(() => {
-    if (started.current) return;
-    started.current = true;
+    if (nativeSplashHidden.current) return;
+    nativeSplashHidden.current = true;
     SplashScreen.hideAsync()
       .catch(() => {})
-      .finally(() => {
-        timer.current = setTimeout(
-          () => setVisible(false),
-          reducedMotion ? HOLD_MS_REDUCED : HOLD_MS
-        );
-      });
-  }, [reducedMotion]);
+      .finally(scheduleHide);
+  }, [scheduleHide]);
 
   if (!visible) return null;
 
   return (
     <Animated.View
+      key={runKey}
       exiting={FadeOut.duration(FADE_MS)}
       onLayout={handleLayout}
       accessible
       accessibilityLabel="Stedvora is loading"
       style={styles.overlay}>
-      <Animated.View entering={FadeIn.duration(600)}>
-        <Image
-          style={styles.mark}
-          contentFit="contain"
-          source={require('@/assets/images/stedvora-mark.png')}
-        />
-      </Animated.View>
-      <Animated.Text entering={FadeIn.delay(300).duration(600)} style={styles.wordmark}>
-        STEDVORA
-      </Animated.Text>
+      <BrandIntro
+        topColor={INTRO_WHITE}
+        bottomColor={BRAND_RED}
+        wordColor={INTRO_WHITE}
+        reducedMotion={reducedMotion}
+      />
     </Animated.View>
   );
 }
@@ -64,11 +87,7 @@ export function AnimatedSplashOverlay() {
 export function AnimatedIcon() {
   return (
     <View style={styles.iconContainer}>
-      <Image
-        style={styles.mark}
-        contentFit="contain"
-        source={require('@/assets/images/stedvora-mark.png')}
-      />
+      <StedvoraMark size={120} />
     </View>
   );
 }
@@ -76,20 +95,10 @@ export function AnimatedIcon() {
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: BRAND_NAVY,
+    backgroundColor: INTRO_BACKGROUND,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
-  },
-  mark: { width: MARK_SIZE, height: MARK_SIZE },
-  wordmark: {
-    position: 'absolute',
-    top: '50%',
-    marginTop: MARK_SIZE / 2 + 28,
-    color: BRAND_IVORY,
-    fontSize: 20,
-    fontWeight: '600',
-    letterSpacing: 8,
   },
   iconContainer: {
     justifyContent: 'center',

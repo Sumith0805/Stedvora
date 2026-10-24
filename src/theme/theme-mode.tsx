@@ -19,7 +19,7 @@ function applyMode(mode: ThemeMode) {
 }
 
 export function ThemeModeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>('system');
+  const [mode, setModeState] = useState<ThemeMode>('dark');
 
   useEffect(() => {
     let active = true;
